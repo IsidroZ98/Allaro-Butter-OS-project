@@ -38,16 +38,19 @@ void destroy_sched_queue(sched_queue_t *queue)
 void signal_process(process_t *info)
 {
     // TODO signal the process that the CPU is free
+	sem_post(info->cpu_sem);
 }
 
 void wait_for_process(sched_queue_t *queue)
 {
     // TODO make the dispatcher wait until CPU is available
+	sem_wait(queue->cpu_sem);
 }
 
 void wait_for_queue(sched_queue_t *queue)
 {
     // TODO make the queue wait until there are ready processes in the queue
+	sem_wait(queue->ready_sem);
 }
 
 process_t *next_process_fifo(sched_queue_t *queue)
@@ -56,13 +59,13 @@ process_t *next_process_fifo(sched_queue_t *queue)
 	list_elem_t *elt = NULL;
 
     // TODO access queue with mutual exclusion
-	
+	pthread_mutex_lock(queue->lock);
     // TODO get the front element of the queue
 	elt = queue->lst.list_get_head(queue->lst);
     // TODO if the element is not NULL remove the element and retrieve the process data
 	if (elt != NULL) {
 		queue->lst.list_remove_elem(queue->lst, elt);
-		info->context = elt;
+		info->context = elt->data;
 	}
 
 
@@ -76,12 +79,13 @@ process_t *next_process_rr(sched_queue_t *queue)
 	list_elem_t *elt = NULL;
 
     // TODO access queue with mutual exclusion
-	
+	pthread_mutex_lock(queue->lock);
     // TODO get the front element of the queue
-	
+	elt = queue->lst.list_get_head(queue->lst);
     // TODO if the element is not NULL remove the element and retrieve the process data
 	if (elt != NULL) {
-
+		queue->lst.list_remove_elem(queue->lst, elt);
+                info->context = elt->data;
 	}
 
 
@@ -102,7 +106,9 @@ void *process_function(void *arg){
 		// TODO request access to CPU using process semaphore
         
         // TODO increment global time equal to time slice or remaining of service time
-        // TODO decrease process service time by time slice
+	 global_time+= time_slice > serviceTime ? serviceTime : time_slice;
+	// TODO decrease process service time by time slice
+	info->serviceTime -= time_slice;
         if(serviceTime > time_slice){
             // Do some useless work
             sleep(time_slice/1000.0);
@@ -120,14 +126,17 @@ void *process_function(void *arg){
 		// TODO if serviceTime is not 0 insert the process to the back of the list
 		if(serviceTime > 0){
             fprintf(stdout, "Inserting process %d to back of the queue\n", info->pid);
+
         }
         // TODO else record the info of the process in the completionTimes file, and signal a new empty slot in the queue
 		// record the info as: processID arrivalTime serviceTime completionTime
         else{
             fprintf(stdout, "Teminating process %d\n", info->pid);
 
+
         }
 		// TODO signal queue the time slice is complete
+		sem_post(queue->sched_queue_sem);
 		
 	}
 	pthread_exit(0);
@@ -143,13 +152,13 @@ void *short_term_scheduler(void *arg){
     // start scheduling processes let the dispatcher run until the long-term exits and the queue is empty
     while(longTermRunning || list_size(&queue->lst)){   
         // TODO wait for cpu to be available
-        
+        sem_wait(queue->cpu_sem);
 
         // choose one process from the queue list
         process_t *p = sched_ops->next_process(queue);
 
         // TODO If there is at least one process in the queue, execute it for time_slice amount
-        //if (...){
+        //if (...){ if(queue->lst.list_size() > 0){
             fprintf(stdout, "Start execution of process %d\n", p->pid);
             // TODO activate the process
             
