@@ -8,7 +8,8 @@
 #include <stdbool.h>
 #include "scheduler.h"
 
-// Some global variables
+// Some global variables 
+// LGTM
 static float global_time = 0;
 static float time_slice = 2; // Change this variable to run the variations of round robin
 static const int MAX_LINE_LENGTH = 255;
