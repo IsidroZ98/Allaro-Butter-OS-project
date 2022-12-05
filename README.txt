@@ -135,7 +135,7 @@ descriptions of what functions you must implement.
             the cpu_sem of the dispatcher
         4. void wait_for_process(sched_queue_t *queue)
             Input: Reference to a process structure
-            Output: N/A
+            Output: N/A 
             Description: This function will be used after signal_process() by the dispatcher to wait for the process 
             to finish executing, the dispatcher will wait on its own cpu_sem.
         5. void wait_for_queue(sched_queue_t *queue)
