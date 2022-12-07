@@ -1,11 +1,15 @@
 /*DO NOT MODIFY THIS FILE*/
+#ifndef	__SCHED__SIM__
+#define __SCHED__SIM__
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "scheduler.h"
 
 // Modify this value to change the maximum number of ready processes in queue at the same time.
-const int QUEUE_SIZE = 10;
+const int QUEUE_SIZE = 13;
+
+#include "tests.c"
 
 int main(int argc, char *argv[]){
 
@@ -19,7 +23,7 @@ int main(int argc, char *argv[]){
 
     // add operations and initialize queue's variables
     if(!strcmp(argv[1], "-fifo")){
-	queue->sched_ops = dispatch_fifo;
+	    queue->sched_ops = dispatch_fifo;
     }
     else if(!strcmp(argv[1], "-rr")){
         queue->sched_ops = dispatch_rr;
@@ -29,6 +33,11 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
     queue->sched_ops.init_sched_queue(queue, QUEUE_SIZE);
+
+    if(!strcmp(argv[2], "-test")){
+	tests(queue, argv);
+	return EXIT_SUCCESS;
+    }
 
     // create threads and assign their correponding function
     if(pthread_create(&long_term_scheduler_thread, NULL, long_term_scheduler, (void*)queue)){
@@ -43,9 +52,10 @@ int main(int argc, char *argv[]){
 
     // wait until all processes finish their execution
     pthread_join(short_term_scheduler_thread, NULL);
-
     // destroy queue
     queue->sched_ops.destroy_sched_queue(queue);
 
     return EXIT_SUCCESS;
 }
+
+#endif

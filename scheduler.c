@@ -8,8 +8,7 @@
 #include <stdbool.h>
 #include "scheduler.h"
 
-// Some global variables 
-// LGTM
+// Some global variables
 static float global_time = 0;
 static float time_slice = 2; // Change this variable to run the variations of round robin
 static const int MAX_LINE_LENGTH = 255;
@@ -19,17 +18,12 @@ FILE *completionTimes;
 void init_sched_queue(sched_queue_t *queue, int queue_size)
 {
 	// TODO initialize semaphores and mutex
-<<<<<<< HEAD
 	sem_init(&queue->sched_queue_sem ,0, queue_size);
 	sem_init(&queue->ready_sem,0, 0);
 	sem_init(&queue->cpu_sem, 0, 1);
-=======
-	sem_init(&queue->sched_queue_sem ,queue_size, 0);
-	sem_init(&queue->ready_sem,0, 0);
-	sem_init(&queue->cpu_sem, 1, 0);
->>>>>>> bf0322444759740e9e17fb13b4905686bad3ed99
-	pthread_mutex_init(&queue->lock,1);
-	list_init(&queue->lst);		
+	pthread_mutex_init(&queue->lock,NULL);
+	list_init(&queue->lst);	
+	//printf("I work here");	
 }
 
 void destroy_sched_queue(sched_queue_t *queue)
@@ -57,7 +51,12 @@ void wait_for_process(sched_queue_t *queue)
 void wait_for_queue(sched_queue_t *queue)
 {
     // TODO make the queue wait until there are ready processes in the queue
-	sem_wait(&queue->ready_sem);
+	int semValue = 0;
+	sem_getvalue(&queue->ready_sem, &semValue);
+	printf("%d", semValue);	
+	if(semValue >= 1){
+		sem_wait(&queue->ready_sem);
+	}
 }
 
 process_t *next_process_fifo(sched_queue_t *queue)
@@ -68,19 +67,14 @@ process_t *next_process_fifo(sched_queue_t *queue)
     // TODO access queue with mutual exclusion
 	pthread_mutex_lock(&queue->lock);
     // TODO get the front element of the queue
-	elt = queue->lst.list_get_head(queue->lst);
+	elt = list_get_head(&queue->lst);
     // TODO if the element is not NULL remove the element and retrieve the process data
 	if (elt != NULL) {
-<<<<<<< HEAD
-		list_remove_elem(queue->lst, elt);
+		list_remove_elem(&queue->lst, elt);
 		info = (process_t *)elt->datum;
-=======
-		queue->lst.list_remove_elem(queue->lst, elt);
-		info->context = elt->datum;
->>>>>>> bf0322444759740e9e17fb13b4905686bad3ed99
+	        time_slice = info->serviceTime;
 	}
-	time_slice = info->serviceTime;
-
+	 pthread_mutex_unlock(&queue->lock);
     // return the process info
 	return info;
 }
@@ -93,18 +87,13 @@ process_t *next_process_rr(sched_queue_t *queue)
     // TODO access queue with mutual exclusion
 	pthread_mutex_lock(&queue->lock);
     // TODO get the front element of the queue
-	elt = list_get_head(queue->lst);
+	elt = list_get_head(&queue->lst);
     // TODO if the element is not NULL remove the element and retrieve the process data
 	if (elt != NULL) {
-<<<<<<< HEAD
-		list_remove_elem(queue->lst, elt);
+		list_remove_elem(&queue->lst, elt);
                 info = (process_t *)elt->datum;
-=======
-		queue->lst.list_remove_elem(queue->lst, elt);
-                info->context = elt->datum;
->>>>>>> bf0322444759740e9e17fb13b4905686bad3ed99
 	}
-
+         pthread_mutex_unlock(&queue->lock);
 
     // return the process info
 	return info;
@@ -123,11 +112,11 @@ void *process_function(void *arg){
 		// TODO request access to CPU using process semaphore
 		// Editors Note: This might be incorrect due to the fact of process
 		// semaphores accebility.
-		sem_post(&info->cpu_sem);        
+		sem_wait(&info->cpu_sem);        
         // TODO increment global time equal to time slice or remaining of service time
 	 global_time+= time_slice > serviceTime ? serviceTime : time_slice;
 	// TODO decrease process service time by time slice
-	info->serviceTime -= time_slice;
+	serviceTime -= time_slice;
         if(serviceTime > time_slice){
             // Do some useless work
             sleep(time_slice/1000.0);
@@ -136,7 +125,7 @@ void *process_function(void *arg){
         }
         else{
             // Do some useless work
-            sleep(serviceTime/1000.0);Customer Has Entered: 2
+            sleep(serviceTime/1000.0);
 
             //////////////////////
 
@@ -146,18 +135,18 @@ void *process_function(void *arg){
 		// TODO if serviceTime is not 0 insert the process to the back of the list
 		if(serviceTime > 0){
             fprintf(stdout, "Inserting process %d to back of the queue\n", info->pid);
-		list_insert_tail(&queue->lst, elt);
+		//list_insert_tail(&queue->lst, elt);
         }
         // TODO else record the info of the process in the completionTimes file, and signal a new empty slot in the queue
 		// record the info as: processID arrivalTime serviceTime completionTime
         else{
             fprintf(stdout, "Teminating process %d\n", info->pid);
-
+		
 
         }
 		// TODO signal queue the time slice is complete
 		// Editors Note: Is this was it means. Ask Professor
-		sem_post(&queue->sched_queue_sem);
+		//sem_post(&queue->sched_queue_sem);
 		
 	}
 	pthread_exit(0);
@@ -179,13 +168,13 @@ void *short_term_scheduler(void *arg){
         process_t *p = sched_ops->next_process(queue);
 
         // TODO If there is at least one process in the queue, execute it for time_slice amount
-        if(queue->lst.list_size() > 0){
+        if(list_size(&queue->lst) > 0){
             fprintf(stdout, "Start execution of process %d\n", p->pid);
             // TODO activate the process
          	sched_ops->signal_process(p);   
             
             // TODO wait for process to finish using CPU
-	    	 sched_ops->wait_process(p);
+	    	 sched_ops->wait_for_process(p);
 	}    
         // TODO else wait for 1 to arrive to the queue, don't forget to release the cpu
         else{
@@ -217,11 +206,8 @@ void *long_term_scheduler(void *arg){
     }
     else {
     	// TODO use longTermRunning variable to let the dispatcher know the long term scheduler is running
-<<<<<<< HEAD
 	//Editor Notes: What does this mean?
-=======
-	
->>>>>>> bf0322444759740e9e17fb13b4905686bad3ed99
+	longTermRunning = true;
     }
 
     // open the completionTimes file for writting so processes can write their information there
@@ -231,13 +217,13 @@ void *long_term_scheduler(void *arg){
         // TODO request access to the cpu
         	sem_post(&queue->cpu_sem);
 	    // TODO read process information from file and parse arrival time, service time, and priority
-		        
+		printf("%s", process_info);	        
         
         
         while(arrival_time > global_time){
 	        fprintf(stdout, "Waiting for process to arrive at %d, currently time %f\n");
             // TODO yield until the process arrives, don't forget to release the cpu before you yield
-
+		
 
             // pass some time to allow process to arrive
             global_time += 1;
@@ -247,15 +233,16 @@ void *long_term_scheduler(void *arg){
 	    pthread_t process_thread;
         process_t *p = (process_t*)malloc(sizeof(process_t));
         // TODO initialize the variables of the process
-	
-
+	p->pid = pid;
+	p->serviceTime = service_time;
+	p->arrivalTime = arrival_time;
         /* TODO: add the process to scheduler queue
          make sure you keep track of the processes inside the queue
          make sure to always maintain mutual exclusion while modifying the queue
          use the queue semaphores to keep track of the amount of processes in the list */
         p->context = malloc(sizeof(list_elem_t));
         p->context->datum = p;
-        	
+        
 
         // TODO release cpu
 	sem_wait(&queue->cpu_sem);
@@ -264,7 +251,8 @@ void *long_term_scheduler(void *arg){
     }
 
     // TODO let the dispatcher know the list of processes ended
-	queue->sched_ops.destroy_sched_queue();
+	//sched_ops->destroy_sched_queue();
+	longTermRunning = false;
     // exit thread
     pthread_exit(0);
 }
